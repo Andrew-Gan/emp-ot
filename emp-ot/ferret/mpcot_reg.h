@@ -26,11 +26,11 @@ public:
 	block Delta_f2k;
 	block *consist_check_chi_alpha = nullptr, *consist_check_VW = nullptr;
 	ThreadPool *pool;
-	
+
 	std::vector<uint32_t> item_pos_recver;
 	GaloisFieldPacking pack;
 
-	MpcotReg(int party, int threads, int n, int t, int log_bin_sz, ThreadPool * pool, IO **ios) {
+	MpcotReg(int party, int threads, int n, int t, int log_bin_sz, ThreadPool * pool, IO **ios, int gpu_mode) {
 		this->party = party;
 		this->threads = threads;
 		netio = ios[0];
@@ -39,6 +39,7 @@ public:
 
 		this->pool = pool;
 		this->is_malicious = false;
+		this->gpu_mode = gpu_mode;
 
 		this->item_n = t;
 		this->idx_max = n;
@@ -87,7 +88,7 @@ public:
 
 	void mpcot_init_sender(vector<SPCOT_Sender<IO>*> &senders, OTPre<IO> *ot) {
 		for(int i = 0; i < tree_n; ++i) {
-			senders.push_back(new SPCOT_Sender<IO>(netio, tree_height));
+			senders.push_back(new SPCOT_Sender<IO>(netio, tree_height, gpu_mode));
 			ot->choices_sender();
 		}
 		netio->flush();
@@ -96,7 +97,7 @@ public:
 
 	void mpcot_init_recver(vector<SPCOT_Recver<IO>*> &recvers, OTPre<IO> *ot) {
 		for(int i = 0; i < tree_n; ++i) {
-			recvers.push_back(new SPCOT_Recver<IO>(netio, tree_height));
+			recvers.push_back(new SPCOT_Recver<IO>(netio, tree_height, gpu_mode));
 			ot->choices_recver(recvers[i]->b);
 			item_pos_recver[i] = recvers[i]->get_index();
 		}
@@ -106,14 +107,14 @@ public:
 
 	void exec_parallel_sender(vector<SPCOT_Sender<IO>*> &senders,
 			OTPre<IO> *ot, block* sparse_vector) {
-		vector<future<void>> fut;		
+		vector<future<void>> fut;
 		int width = tree_n / threads;
 		int start = 0, end = width;
-		for(int i = 0; i < threads - 1; ++i) {	
-			fut.push_back(this->pool->enqueue([this, start, end, width, 
+		for(int i = 0; i < threads - 1; ++i) {
+			fut.push_back(this->pool->enqueue([this, start, end, width,
 						senders, ot, sparse_vector](){
 				for(int i = start; i < end; ++i)
-					exec_f2k_sender(senders[i], ot, sparse_vector+i*leave_n, 
+					exec_f2k_sender(senders[i], ot, sparse_vector+i*leave_n,
 							ios[start/width], i);
 			}));
 			start = end;
@@ -121,21 +122,21 @@ public:
 		}
 		end = tree_n;
 		for(int i = start; i < end; ++i)
-			exec_f2k_sender(senders[i], ot, sparse_vector+i*leave_n, 
+			exec_f2k_sender(senders[i], ot, sparse_vector+i*leave_n,
 					ios[threads - 1], i);
 		for (auto & f : fut) f.get();
 	}
 
 	void exec_parallel_recver(vector<SPCOT_Recver<IO>*> &recvers,
 			OTPre<IO> *ot, block* sparse_vector) {
-		vector<future<void>> fut;		
+		vector<future<void>> fut;
 		int width = tree_n / threads;
 		int start = 0, end = width;
 		for(int i = 0; i < threads - 1; ++i) {
-			fut.push_back(this->pool->enqueue([this, start, end, width, 
+			fut.push_back(this->pool->enqueue([this, start, end, width,
 						recvers, ot, sparse_vector](){
 				for(int i = start; i < end; ++i)
-					exec_f2k_recver(recvers[i], ot, sparse_vector+i*leave_n, 
+					exec_f2k_recver(recvers[i], ot, sparse_vector+i*leave_n,
 							ios[start/width], i);
 			}));
 			start = end;
@@ -143,12 +144,12 @@ public:
 		}
 		end = tree_n;
 		for(int i = start; i < end; ++i)
-			exec_f2k_recver(recvers[i], ot, sparse_vector+i*leave_n, 
+			exec_f2k_recver(recvers[i], ot, sparse_vector+i*leave_n,
 					ios[threads - 1], i);
 		for (auto & f : fut) f.get();
 	}
 
-	void exec_f2k_sender(SPCOT_Sender<IO> *sender, OTPre<IO> *ot, 
+	void exec_f2k_sender(SPCOT_Sender<IO> *sender, OTPre<IO> *ot,
 			block *ggm_tree_mem, IO *io, int i) {
 		sender->compute(ggm_tree_mem, Delta_f2k);
 		sender->template send_f2k<OTPre<IO>>(ot, io, i);
@@ -161,7 +162,7 @@ public:
 			block *ggm_tree_mem, IO *io, int i) {
 		recver->template recv_f2k<OTPre<IO>>(ot, io, i);
 		recver->compute(ggm_tree_mem);
-		if(is_malicious) 
+		if(is_malicious)
 			recver->consistency_check_msg_gen(consist_check_chi_alpha+i, consist_check_VW+i);
 	}
 

@@ -1,6 +1,6 @@
 #Testing macro
 macro (add_test_executable_with_lib _name libs)
-	add_executable(test_${_name} "${_name}.cpp")
+	add_executable(test_${_name} "${_name}.cpp" "../emp-ot/ferret/gpu_matmult.cu")
 	target_link_libraries(test_${_name} ${EMP-TOOL_LIBRARIES})
 endmacro()
 

@@ -1,5 +1,5 @@
 cmake_minimum_required (VERSION 3.0)
-project (emp-ot)
+project (emp-ot LANGUAGES C CXX CUDA)
 set(NAME "emp-ot")
 
 find_path(CMAKE_FOLDER NAMES cmake/emp-tool-config.cmake)

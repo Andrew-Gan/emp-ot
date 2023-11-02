@@ -51,16 +51,21 @@ public:
 	// receive the message and reconstruct the tree
 	// j: position of the secret, begins from 0
 	void compute(block* ggm_tree_mem) {
-		this->ggm_tree = ggm_tree_mem;
-		ggm_tree_reconstruction(b, m);
-		ggm_tree[choice_pos] = zero_block;
-		block nodes_sum = zero_block;
-		block one = makeBlock(0xFFFFFFFFFFFFFFFFLL,0xFFFFFFFFFFFFFFFELL);
-		for(int i = 0; i < leave_n; ++i) {
-			ggm_tree[i] = ggm_tree[i] & one;
-			nodes_sum = nodes_sum ^ ggm_tree[i];
+		if (gpu_mode == 0) {
+			this->ggm_tree = ggm_tree_mem;
+			ggm_tree_reconstruction(b, m);
+			ggm_tree[choice_pos] = zero_block;
+			block nodes_sum = zero_block;
+			block one = makeBlock(0xFFFFFFFFFFFFFFFFLL,0xFFFFFFFFFFFFFFFELL);
+			for(int i = 0; i < leave_n; ++i) {
+				ggm_tree[i] = ggm_tree[i] & one;
+				nodes_sum = nodes_sum ^ ggm_tree[i];
+			}
+			ggm_tree[choice_pos] = nodes_sum ^ secret_sum_f2;
 		}
-		ggm_tree[choice_pos] = nodes_sum ^ secret_sum_f2;
+		else {
+			gpu_ggm_tree_recv(ggm_tree_mem, b, m, secret_sum_f2, choice_pos)
+		}
 	}
 
 	void ggm_tree_reconstruction(bool *b, block *m) {

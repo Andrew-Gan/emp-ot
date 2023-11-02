@@ -16,10 +16,12 @@ class SPCOT_Sender { public:
 	int depth, leave_n;
 	PRG prg;
 	block secret_sum_f2;
+	int gpu_mode;
 
-	SPCOT_Sender(IO *io, int depth_in) {
+	SPCOT_Sender(IO *io, int depth_in, int gpu_mode) {
 		initialization(io, depth_in);
 		prg.random_block(&seed, 1);
+		this->gpu_mode = gpu_mode;
 	}
 
 	void initialization(IO *io, int depth_in) {
@@ -36,7 +38,8 @@ class SPCOT_Sender { public:
 	// generate GGM tree, transfer secret, F2^k
 	void compute(block* ggm_tree_mem, block secret) {
 		this->delta = secret;
-		ggm_tree_gen(m, m+depth-1, ggm_tree_mem, secret);
+		if(gpu_mode == 0) ggm_tree_gen(m, m+depth-1, ggm_tree_mem, secret);
+		else gpu_ggm_tree_send(m, m+depth-1, ggm_tree_mem, secret_sum_f2, secret, depth);
 	}
 
 	// send the nodes by oblivious transfer, F2^k

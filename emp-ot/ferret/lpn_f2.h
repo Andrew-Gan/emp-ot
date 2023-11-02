@@ -2,6 +2,7 @@
 #define EMP_LPN_F2K_H__
 
 #include "emp-tool/emp-tool.h"
+#include "emp-ot/ferret/gpu_matmult.h"
 using namespace emp;
 
 //Implementation of local linear code on F_2^k
@@ -33,6 +34,8 @@ class LpnF2 { public:
 		for(int m = 0; m < d; ++m)
 			tmp[m] = makeBlock(i, m);
 		AES_ecb_encrypt_blks(tmp, d, &prp->aes);
+		// above identical to below:
+		// prp->permute_block(tmp, d);
 		uint32_t* r = (uint32_t*)(tmp);
 		for(int m = 0; m < 4; ++m)
 			for (int j = 0; j < d; ++j) {
@@ -44,8 +47,8 @@ class LpnF2 { public:
 	}
 
 	void __compute1(block * nn, const block * kk, int64_t i, PRP*prp) {
-                const auto nr_blocks = d/4 + (d % 4 != 0);
-                block tmp[nr_blocks];
+		const auto nr_blocks = d/4 + (d % 4 != 0);
+		block tmp[nr_blocks];
 		for(int m = 0; m < nr_blocks; ++m)
 			tmp[m] = makeBlock(i, m);
 		prp->permute_block(tmp, nr_blocks);
@@ -79,6 +82,11 @@ class LpnF2 { public:
 		task(nn, kk, start, end);
 
 		for (auto &f: fut) f.get();
+	}
+
+	void gpu_compute(block *nn, const block *kk) {
+		seed = seed_gen();
+		gpu_launcher((u128*) &seed, d, n, (u128*) nn, k, (u128*) kk);
 	}
 
 	block seed_gen() {

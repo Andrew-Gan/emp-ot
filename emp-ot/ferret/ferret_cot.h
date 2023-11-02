@@ -14,7 +14,7 @@ namespace emp {
  *
  */
 template<typename T>
-class FerretCOT: public COT<T> { 
+class FerretCOT: public COT<T> {
 public:
 	using COT<T>::io;
 	using COT<T>::Delta;
@@ -22,9 +22,9 @@ public:
 	PrimalLPNParameter param;
 	int64_t ot_used, ot_limit;
 
-	FerretCOT(int party, int threads, T **ios, bool malicious = false, bool run_setup = true, 
-PrimalLPNParameter param = ferret_b13, std::string pre_file="");
-	
+	FerretCOT(int party, int threads, T **ios, bool malicious = false, bool run_setup = true,
+PrimalLPNParameter param = ferret_b13, std::string pre_file="", int mode = 0);
+
 
 	~FerretCOT();
 
@@ -55,6 +55,7 @@ private:
 	int64_t M;
 	bool is_malicious;
 	bool extend_initialized;
+	int gpu_mode;
 
 	block one;
 
@@ -69,7 +70,7 @@ private:
 	MpcotReg<T> *mpcot = nullptr;
 	LpnF2<T, 10> *lpn_f2 = nullptr;
 
-	
+
 	void online_sender(block *data, int64_t length);
 
 	void online_recver(block *data, const bool *b, int64_t length);
@@ -80,7 +81,7 @@ private:
 
 	void extend_initialization();
 
-	void extend(block* ot_output, MpcotReg<T> *mpfss, OTPre<T> *preot, 
+	void extend(block* ot_output, MpcotReg<T> *mpfss, OTPre<T> *preot,
 			LpnF2<T, 10> *lpn, block *ot_input);
 
 	void extend_f2k(block *ot_buffer);

@@ -80,6 +80,7 @@ double test_cot(T * ot, NetIO *io, int party, int64_t length) {
 			}
 		}
 	}
+	
 	std::cout << "Tests passed.\t";
 	io->flush();
 	delete[] b0;
@@ -129,6 +130,9 @@ double test_rot(T* ot, NetIO *io, int party, int64_t length) {
 
 template <typename T>
 double test_rcot(T* ot, NetIO *io, int party, int64_t length, bool inplace) {
+	struct timespec tp[2];
+	clock_gettime(CLOCK_MONOTONIC, &tp[0]);
+
 	block *b = nullptr;
 	PRG prg;
 
@@ -150,6 +154,12 @@ double test_rcot(T* ot, NetIO *io, int party, int64_t length, bool inplace) {
 		// The RCOTs will be generated directly to this buffer
 		ot->rcot_inplace(b, mem_size);
 	}
+	
+	clock_gettime(CLOCK_MONOTONIC, &tp[1]);
+	float duration = (tp[1].tv_sec-tp[0].tv_sec) * 1000.0f;
+	duration += (tp[1].tv_nsec-tp[0].tv_nsec) / 1000000.0f;
+	printf("total: %.2f ms\n",duration);
+
 	long long t = time_from(start);
 	io->sync();
 	if (party == ALICE) {
@@ -169,6 +179,7 @@ double test_rcot(T* ot, NetIO *io, int party, int64_t length, bool inplace) {
 			error("RCOT failed");
 		delete[] b0;
 	}
+
 	std::cout << "Tests passed.\t";
 	delete[] b;
 	return t;
